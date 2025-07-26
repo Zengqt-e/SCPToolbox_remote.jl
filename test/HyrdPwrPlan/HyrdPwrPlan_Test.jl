@@ -12,26 +12,26 @@ pbm = TrajectoryProblem();
 n, m, d = 1, 2, 1;  # set the system dimensions
 problem_set_dims!(pbm, n, m, d);
 
-t_f = 3;  # set the regular planning period 100ms
+t_f = 0.1;  # set the regular planning period 100ms
 Cap = 450e-6;   #450uF capacitor
 LmdG = 0.06;    # 0.06Wb
 weG = 3e3/60*4*2*pi; #3krpm, 1256.6
 wmM = 1e3/60*2*pi;   #1krpm, 104.72
 
 f(t, x, u, p) = begin       # c is constant/parameters in system
-    udc = x;
+    udc, = x;
     iqG, tqM = u;
-    return fill(-1/450e-6*(1.5*iqG*1256.6*0.06 + tqM*104.72)*udc^(-1)*t_f, 1, 1);
+    return [-1/450e-6*(1.5*iqG*1256.6*0.06 + tqM*104.72)/udc*t_f];
 end
 
 A(t, x, u, p) = begin    # A*δx
-    udc = x;
+    udc, = x;
     iqG, tqM = u;
-   return fill(-1/450e-6*(1.5*iqG*1256.6*0.06 + tqM*104.72)*(-1)*udc^(-2)*t_f, 1, 1);
+   return [-1/450e-6*(1.5*iqG*1256.6*0.06 + tqM*104.72)*(-1)*udc^(-2)*t_f;;];
 end
 
 B(t, x, u, p) =begin     # B*δu = B*δ(iqG;tqM)
-    udc = x;
+    udc, = x;
     iqG, tqM = u;
     return  -1/450e-6*[1.5*1256.6*0.06  104.72]*udc^(-1)*t_f;
 end
@@ -61,14 +61,16 @@ problem_set_bc!(pbm, :tc, wrap(g_tc), wrap(H_f));
 alg = :ptr;
 
 ## set objective function
-tqM_req = 50;   # 50Nm output is desired
-R(x, u ,p) = u'*u;
+tqM_req = straightline_interpolate([0], [100], N);;   # 50Nm output is desired
+#iqG_Fwd = -tqM_req*104.72/(1.5*1256.6*0.06); 
+iqG_Fwd = -tqM_req;
+R(x, u ,p) = [(u[2]-50)]'*[(u[2]-50)];
 wrap(func) = (t, k, x, u, p, pbm) -> func(x, u, p);
 problem_set_running_cost!(pbm, alg, wrap(R));
 
 ## set the initial guess
 state_guess(N)=straightline_interpolate(x_0, x_f, N);
-input_guess(N)= straightline_interpolate(zeros(2), zeros(2), N);
+input_guess(N)= straightline_interpolate([iqG_Fwd[1], tqM_req[1]], [iqG_Fwd[N], tqM_req[N]], N);
 problem_set_guess!(pbm, (N, pbm) -> begin
     x = state_guess(N)
     u = input_guess(N)
@@ -94,3 +96,5 @@ if alg == :ptr
     ptr_pbm = PTR.create(pars, pbm)
     sol, history = PTR.solve(ptr_pbm)
 end;
+
+sol_PwrPlan = sol;
