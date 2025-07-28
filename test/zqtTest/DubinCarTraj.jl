@@ -9,6 +9,9 @@ using SCPToolbox
 using PyPlot, Colors, LinearAlgebra
 
 using ECOS
+# using Ipopt
+# using SCS
+# using OSQP
 
 
 pbm = TrajectoryProblem();

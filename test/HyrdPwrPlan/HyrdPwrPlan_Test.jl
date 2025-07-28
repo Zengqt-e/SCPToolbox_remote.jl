@@ -59,6 +59,7 @@ problem_set_bc!(pbm, :tc, wrap(g_tc), wrap(H_f));
 
 ## set the desired algorithm
 alg = :ptr;
+N, Nsub = 20, 25
 
 ## set objective function
 tqM_req = straightline_interpolate([0], [100], N);;   # 50Nm output is desired
